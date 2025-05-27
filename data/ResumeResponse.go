@@ -1,10 +1,15 @@
 package data
 
 type Resume struct {
-	Resume1 string `json:"resume1"`
-	Resume2 string `json:"resume2"`
+	Result string `json:"result"`
+	Source string `json:"source"`
+}
+
+type Resumes struct {
+	Resume1 Resume `json:"resume1"`
+	Resume2 Resume `json:"resume2"`
 }
 
 type ResumeResponse struct {
-	Resume Resume `json:"resume"`
+	Resume Resumes `json:"resume"`
 }

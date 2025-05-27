@@ -3,9 +3,17 @@ package main
 import (
 	"TechNews/config"
 	"TechNews/memory"
+	_ "embed"
 	"log"
 	"net/http"
 )
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
+	})
+}
 
 func main() {
 	config.InitRedis()
@@ -27,5 +35,8 @@ func main() {
 			memory.SaveResumeData(w)
 		}
 	})
-	log.Fatal(http.ListenAndServe(":8080", mux))
+
+	//miiddleware (buat buka CORS)
+	handler := withCORS(mux)
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }

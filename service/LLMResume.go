@@ -31,8 +31,10 @@ func resumeNews(text string, maxOutputToken int32) string {
 	result, err := client.Models.GenerateContent(
 		ctx,
 		"gemma-3n-e4b-it",
-		genai.Text("Tolong buatkan paragraf resume ke bahasa Indonesia (dalam satu paragraf): "+text),
-		&genai.GenerateContentConfig{MaxOutputTokens: maxOutputToken},
+		genai.Text("Tanggapi hanya dengan satu paragraf bahasa indonesia tanpa ada tambahan baris. Jangan sertakan catatan. Pertahankan istilah teknis dalam Bahasa Inggris. Resume text berikut : "+text),
+		&genai.GenerateContentConfig{
+			MaxOutputTokens: maxOutputToken,
+		},
 	)
 	if err != nil {
 		log.Printf("Error generating content: %v", err)
@@ -49,7 +51,7 @@ var firstLinkVideo string
 func getResumeData() data.ResumeResponse {
 	result, err := config.RedisClient.Get(config.Ctx, "resume").Result()
 	if err != nil {
-		return data.ResumeResponse{Resume: data.Resume{}}
+		return data.ResumeResponse{Resume: data.Resumes{}}
 	}
 	var resumeResp data.ResumeResponse
 	json.Unmarshal([]byte(result), &resumeResp)
@@ -59,23 +61,23 @@ func getResumeData() data.ResumeResponse {
 	}
 }
 
-func resumeFromTLDRTech() string {
+func resumeFromTLDRTech() data.Resume {
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL("https://tldr.tech/api/rss/tech")
 	if err != nil {
 		log.Printf("Error parsing RSS feed: %v", err)
-		return ""
+		return data.Resume{}
 	}
 
 	if len(feed.Items) == 0 {
 		log.Println("No items found in RSS feed")
-		return ""
+		return data.Resume{}
 	}
 
 	firstLinkNews = feed.Items[0].Link
 	dataOld := getResumeData()
-	if dataOld.Resume.Resume1 != "" && strings.Contains(dataOld.Resume.Resume1, firstLinkNews) {
-		fmt.Println("The link is already in old data, skip processing: " + firstLinkNews + "old data:" + dataOld.Resume.Resume1)
+	if dataOld.Resume.Resume1.Result != "" && strings.Contains(dataOld.Resume.Resume1.Result, firstLinkNews) {
+		fmt.Println("News Link : The link is already in old data, skip processing:")
 		return dataOld.Resume.Resume1
 	}
 
@@ -83,19 +85,19 @@ func resumeFromTLDRTech() string {
 	resp, err := http.Get(firstLinkNews)
 	if err != nil {
 		log.Printf("Failed to fetch article page: %v", err)
-		return ""
+		return data.Resume{}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Bad status code: %d", resp.StatusCode)
-		return ""
+		return data.Resume{}
 	}
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		log.Printf("Error parsing HTML: %v", err)
-		return ""
+		return data.Resume{}
 	}
 
 	var result []string
@@ -112,7 +114,7 @@ func resumeFromTLDRTech() string {
 
 	if len(result) == 0 {
 		log.Println("Tidak menemukan elemen dengan class 'newsletter-html'")
-		return ""
+		return data.Resume{}
 	}
 
 	output := ""
@@ -126,27 +128,28 @@ func resumeFromTLDRTech() string {
 		output = output[:2000]
 	}
 
-	return "Sumber:" + firstLinkNews + "\n" + resumeNews(limit200Word(output), 200)
+	return data.Resume{Result: resumeNews(limit200Word(output), 300), Source: firstLinkNews}
 }
 
-func resumeFromFireshipVideo() string {
+func resumeFromFireshipVideo() data.Resume {
+	//TODO : pastikan link youtube dapat baru eksekusi
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL("https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA")
 	if err != nil {
 		log.Printf("Error parsing RSS feed: %v", err)
-		return ""
+		return data.Resume{}
 	}
 
 	if len(feed.Items) == 0 {
 		log.Println("No items found in RSS feed")
-		return ""
+		return data.Resume{}
 	}
 
 	firstLinkVideo = feed.Items[0].Link
 	//kalo link sebelumnya sama gausah dirangkum biar ga boros token
 	dataOld := getResumeData()
-	if dataOld.Resume.Resume2 != "" && strings.Contains(dataOld.Resume.Resume2, firstLinkVideo) {
-		fmt.Println("The link is already in old data, skip processing: " + firstLinkVideo + "old data:" + dataOld.Resume.Resume2)
+	if dataOld.Resume.Resume2.Source != "" && strings.Contains(dataOld.Resume.Resume2.Source, firstLinkVideo) {
+		fmt.Println("The link is already in old data, skip processing")
 		return dataOld.Resume.Resume2
 	}
 
@@ -155,12 +158,12 @@ func resumeFromFireshipVideo() string {
 	matches := reVideoID.FindStringSubmatch(firstLinkVideo)
 	if len(matches) < 2 {
 		log.Println("Video ID not found in link")
-		return ""
+		return data.Resume{}
 	}
 	videoID := matches[1]
 
 	subtitle := downloadAndCleanSubtitle(videoID)
-	return "Sumber:" + firstLinkVideo + "\n" + resumeNews(limit200Word(subtitle), 200)
+	return data.Resume{Result: resumeNews(limit200Word(subtitle), 250), Source: firstLinkNews}
 }
 
 func downloadAndCleanSubtitle(videoID string) string {
@@ -270,8 +273,8 @@ func cleanVtt(vtt string) string {
 
 func limit200Word(teks string) string {
 	word := strings.Fields(teks)
-	if len(word) > 200 {
-		word = word[:200]
+	if len(word) > 250 {
+		word = word[:250]
 	}
 	return strings.Join(word, " ")
 }
@@ -280,7 +283,7 @@ func GetResume() data.ResumeResponse {
 	resumeText := resumeFromTLDRTech()
 	resumeVideo := resumeFromFireshipVideo()
 	return data.ResumeResponse{
-		Resume: data.Resume{
+		Resume: data.Resumes{
 			Resume1: resumeText,
 			Resume2: resumeVideo,
 		},
