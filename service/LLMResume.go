@@ -163,7 +163,7 @@ func resumeFromFireshipVideo() data.Resume {
 	videoID := matches[1]
 
 	subtitle := downloadAndCleanSubtitle(videoID)
-	return data.Resume{Result: resumeNews(limit200Word(subtitle), 250), Source: firstLinkNews}
+	return data.Resume{Result: resumeNews(limit200Word(subtitle), 250), Source: firstLinkVideo}
 }
 
 func downloadAndCleanSubtitle(videoID string) string {
