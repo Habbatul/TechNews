@@ -18,9 +18,13 @@ import (
 )
 
 func resumeNews(text string, maxOutputToken int32) string {
+	text = strings.TrimSpace(text)
+
 	if len(text) < 10 {
+		log.Printf("Text terlalu pendek untuk dirangkum (panjang: %d)", len(text))
 		return ""
 	}
+
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey:  os.Getenv("GENAI_KEY"),
@@ -79,7 +83,7 @@ func resumeFromTLDRTech() data.Resume {
 
 	firstLinkNews = feed.Items[0].Link
 	dataOld := getResumeData()
-	if dataOld.Resume.Resume1.Result != "" && strings.Contains(dataOld.Resume.Resume1.Result, firstLinkNews) {
+	if dataOld.Resume.Resume1.Source != "" && strings.Contains(dataOld.Resume.Resume1.Source, firstLinkNews) && len(dataOld.Resume.Resume1.Result) != 0 {
 		fmt.Println("News Link : The link is already in old data, skip processing:")
 		return dataOld.Resume.Resume1
 	}
@@ -104,15 +108,26 @@ func resumeFromTLDRTech() data.Resume {
 	}
 
 	var result []string
+	count := 0
+
 	doc.Find(".newsletter-html").EachWithBreak(func(i int, s *goquery.Selection) bool {
-		if i >= 2 {
-			return false
+		article := s.ParentsFiltered("article")
+		isSponsored := false
+
+		article.Find("a h3").Each(func(j int, h3 *goquery.Selection) {
+			if strings.Contains(h3.Text(), "(Sponsor)") {
+				isSponsored = true
+			}
+		})
+		if isSponsored {
+			return true
 		}
+
 		text := strings.TrimSpace(s.Text())
 		if text != "" {
 			result = append(result, text)
 		}
-		return true
+		return count < 2
 	})
 
 	if len(result) == 0 {
@@ -148,8 +163,8 @@ func resumeFromFireshipVideo() data.Resume {
 	firstLinkVideo = feed.Items[0].Link
 	//kalo link sebelumnya sama gausah dirangkum biar ga boros token
 	dataOld := getResumeData()
-	if dataOld.Resume.Resume2.Source != "" && strings.Contains(dataOld.Resume.Resume2.Source, firstLinkVideo) {
-		fmt.Println("The link is already in old data, skip processing")
+	if (dataOld.Resume.Resume2.Source != "" && strings.Contains(dataOld.Resume.Resume2.Source, firstLinkVideo)) && len(dataOld.Resume.Resume2.Result) != 0 {
+		fmt.Println("Video : The link is already in old data, skip processing")
 		return dataOld.Resume.Resume2
 	}
 

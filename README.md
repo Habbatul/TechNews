@@ -65,8 +65,15 @@ Future updates may be as follows :
 ---
 
 ## 📝 Changelog
+- 01-06-2025
+  - Updated: Skipped resume articles identified as sponsor
+  - Updated: Fixed condition to skip resume processing (when the URL is the same and the resume result is already filled)
 
-- Updated: YouTube's `ytInitialPlayerResponse` structure changed; adjusted RegExp to use greedy quantifier `.*` instead of `.*?` to fully capture JSON.
-- Updated: `Reddit .rss` to `feedSources`.
-- Added: `Proxy.go` to proxy Reddit RSS feeds via `gofeed` (for Indonesian ISP blocks).
-- Fixed: Prevent sending requests to LLM when text input is blank.
+- 31-05-2025
+  - Updated: YouTube's `ytInitialPlayerResponse` structure changed; adjusted RegExp to use greedy quantifier `.*` instead of `.*?` to fully capture JSON.
+  - Updated: `Reddit .rss` to `feedSources`.
+  - Added: `Proxy.go` to proxy Reddit RSS feeds via `gofeed` (for Indonesian ISP blocks).
+  - Fixed: Prevent sending requests to LLM when text input is blank.
+- Other
+  - Check the commit history
+---
