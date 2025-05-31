@@ -18,6 +18,9 @@ import (
 )
 
 func resumeNews(text string, maxOutputToken int32) string {
+	if len(text) < 10 {
+		return ""
+	}
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey:  os.Getenv("GENAI_KEY"),
@@ -119,16 +122,13 @@ func resumeFromTLDRTech() data.Resume {
 
 	output := ""
 	if len(result) > 0 {
-		output += "news-1:" + result[0]
+		output += "news-1:" + limitWord(result[0], 125)
 	}
 	if len(result) > 1 {
-		output += ". news-2:" + result[1]
-	}
-	if len(output) > 2000 {
-		output = output[:2000]
+		output += ". news-2:" + limitWord(result[1], 125)
 	}
 
-	return data.Resume{Result: resumeNews(limit200Word(output), 300), Source: firstLinkNews}
+	return data.Resume{Result: resumeNews(output, 225), Source: firstLinkNews}
 }
 
 func resumeFromFireshipVideo() data.Resume {
@@ -163,7 +163,7 @@ func resumeFromFireshipVideo() data.Resume {
 	videoID := matches[1]
 
 	subtitle := downloadAndCleanSubtitle(videoID)
-	return data.Resume{Result: resumeNews(limit200Word(subtitle), 250), Source: firstLinkVideo}
+	return data.Resume{Result: resumeNews(limitWord(subtitle, 230), 230), Source: firstLinkVideo}
 }
 
 func downloadAndCleanSubtitle(videoID string) string {
@@ -181,7 +181,7 @@ func downloadAndCleanSubtitle(videoID string) string {
 	}
 	body := string(bodyBytes)
 
-	re := regexp.MustCompile(`ytInitialPlayerResponse\s*=\s*(\{.*?\});`)
+	re := regexp.MustCompile(`ytInitialPlayerResponse\s*=\s*({.*});`)
 	matches := re.FindStringSubmatch(body)
 	if len(matches) < 2 {
 		log.Println("ytInitialPlayerResponse JSON not found")
@@ -209,6 +209,8 @@ func downloadAndCleanSubtitle(videoID string) string {
 	if subtitleUrl == "" {
 		log.Println("No English subtitle found")
 	}
+
+	log.Println(subtitleUrl)
 
 	subResp, err := http.Get(subtitleUrl)
 	if err != nil {
@@ -271,10 +273,10 @@ func cleanVtt(vtt string) string {
 	return strings.Join(result, " ")
 }
 
-func limit200Word(teks string) string {
-	word := strings.Fields(teks)
-	if len(word) > 250 {
-		word = word[:250]
+func limitWord(text string, lenText int) string {
+	word := strings.Fields(text)
+	if len(word) > lenText {
+		word = word[:lenText]
 	}
 	return strings.Join(word, " ")
 }
